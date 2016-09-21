@@ -17,10 +17,18 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', (m) => {
-	if(m.content.startsWith('!lfg ') && m.channel.guild.id === '198139711678578688') { // New entry to lfg listing
-		
+	if(m.content.startsWith('!lfg') && m.channel.guild.id === '198139711678578688') { // New entry to lfg listing
+		if(m.content.startsWith('!lfghelp') || m.content === '!lfg') { // lfghelp
+			let str = 'Hello! I am a bot developed by **Brayzure#9406**! I generate a list of Overwatch games that are currently being hosted';
+			str += ' by other users.\nYou can add your game to the list by typing `!lfg <mode> <platform> <region> <tier (if competitive)>`.';
+			str += '\nYour listing is automatically removed after 30 minutes, or whenever you type `!remove`.'
+			PM(m.author.id,str);
+			return;
+		}
+
 		let args = m.content.split(' ').slice(1);
-		args = format(m.author,args);
+		args = format(m.author,args); // Format user-submitted data
+		
 		/*
 		Competitive Format:
 			!lfg comp pc na plat
@@ -48,16 +56,18 @@ client.on('messageCreate', (m) => {
 		data[args[0]][m.author.id] = listing;
 		save(['data']);
 		update();
-
-		/*
-		let str = `**Discord Username:** ${listing.username}  **Mode:** ${args[0]}  **Platform:** ${listing.platform}`;
-		str += `  **Region:** ${listing.region}  **Tier:** ${listing.tier}`;
-		client.createMessage(m.channel.id, str);
-		*/
+	}
+	if(m.content.startsWith('!remove') && m.channel.guild.id === '198139711678578688') { // Remove user listing
+		let mode = findUserMode(m.author.id);
+		if(mode) {
+			delete data[mode][m.author.id];
+			save(['data']);
+			update();
+		}
 	}
 });
 
-function PM(id,content) {
+function PM(id,content) { // Send PM
 	client.getDMChannel(id).then((c) => {
 		client.createMessage(c.id,content);
 	});
@@ -113,7 +123,7 @@ function update() {
 		if(data.Competitive.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Competitive[key]; // Store listing to something short
-			str += `**Discord Username:** ${l.username}  **Platform:** ${l.platform}  **Region:** ${l.region}  **Tier:** ${l.tier}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}  **Tier:** ${l.tier}\n`;
 		}
 	}
 	if(!flag) {
@@ -126,7 +136,7 @@ function update() {
 		if(data.Casual.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Casual[key]; // Store listing to something short
-			str += `**Discord Username:** ${l.username}  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
 		}
 	}
 	if(!flag) {
@@ -139,7 +149,7 @@ function update() {
 		if(data.Brawl.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Brawl[key]; // Store listing to something short
-			str += `**Discord Username:** ${l.username}  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
 		}
 	}
 	if(!flag) {
@@ -174,7 +184,7 @@ function save(arr) { // Save all files in array
 }
 
 function format(user,args) { // Format data into something we like
-	// Mode select
+	// Mode format
 	if(args[0].match(/(cas|q.{4,6}p|unrank)/i)) { // Matches casual
 		args[0] = 'Casual';
 	}
@@ -191,7 +201,7 @@ function format(user,args) { // Format data into something we like
 		return null;
 	}
 
-	// Platform select
+	// Platform format
 	if(args[1].match(/pc/i)) {
 		args[1] = 'PC';
 	}
@@ -208,7 +218,7 @@ function format(user,args) { // Format data into something we like
 		return null;
 	}
 
-	// Region select
+	// Region format
 	if(args[2].match(/na/i)) {
 		args[2] = 'NA';
 	}
@@ -225,7 +235,7 @@ function format(user,args) { // Format data into something we like
 		return null;
 	}
 
-	// Rank select
+	// Rank format
 	if(args[0] === 'Competitive') {
 		if(args[4]) {
 			args[3] = args[3] + args[4]; // In case of multi-word ranks (Grand Master)

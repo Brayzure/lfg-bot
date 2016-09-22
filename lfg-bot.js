@@ -6,6 +6,7 @@ var config = require('./src/config.json');
 var data = require('./src/data.json');
 
 var client = new eris("Bot " + secret.token);
+var self;
 
 client.connect();
 
@@ -14,57 +15,65 @@ setInterval(update,3e5);
 
 client.on('ready', () => {
 	console.log('Ready to play!');
+	self = client.getSelf();
 });
 
 client.on('messageCreate', (m) => {
-	if(m.content.startsWith('!lfg') && m.channel.guild.id === '198139711678578688') { // New entry to lfg listing
-		if(m.content.startsWith('!lfghelp') || m.content === '!lfg') { // lfghelp
-			let str = 'Hello! I am a bot developed by **Brayzure#9406**! I generate a list of Overwatch games that are currently being hosted';
-			str += ' by other users.\nYou can add your game to the list by typing `!lfg <mode> <platform> <region> <tier (if competitive)>`.';
-			str += '\nYour listing is automatically removed after 30 minutes, or whenever you type `!remove`.'
-			PM(m.author.id,str);
-			return;
-		}
+	if(m.channel.id === config.lfg) { // Posted in lfg channel
+		if(m.content.startsWith('!lfg')) { // New entry to lfg listing
+			if(m.content.startsWith('!lfghelp') || m.content === '!lfg') { // lfghelp
+				let str = 'Hello! I am a bot developed by **Brayzure#9406**! I generate a list of Overwatch games that are currently being hosted';
+				str += ' by other users.\nYou can add your game to the list by typing `!lfg <mode> <platform> <region> <tier (if competitive)>`.';
+				str += '\nYour listing is automatically removed after 30 minutes, or whenever you type `!remove`.'
+				PM(m.author.id,str);
+				return;
+			}
 
-		let args = m.content.split(' ').slice(1);
-		args = format(m.author,args); // Format user-submitted data
-		
-		/*
-		Competitive Format:
-			!lfg comp pc na plat
-		Casual Format:
-			!lfg casual pc na
-		*/
+			let args = m.content.split(' ').slice(1);
+			args = format(m.author,args); // Format user-submitted data
+			
+			/*
+			Competitive Format:
+				!lfg comp pc na plat
+			Casual Format:
+				!lfg casual pc na
+			*/
 
-		if(!args) { // Formatting found an error
-			return;
-		}
-		let mode = findUserMode(m.author.id);
-		if(mode) { // Delete old entry if user already made one
-			delete data[mode][m.author.id];
-		}
+			if(!args) { // Formatting found an error
+				return;
+			}
+			let mode = findUserMode(m.author.id);
+			if(mode) { // Delete old entry if user already made one
+				delete data[mode][m.author.id];
+			}
 
-		let listing = {
-			username: `${m.author.username}#${m.author.discriminator}`,
-			uid: m.author.id,
-			platform: args[1],
-			region: args[2],
-			tier: args[3],
-			timestamp: new Date().getTime()
-		}
+			let listing = {
+				username: `${m.author.username}#${m.author.discriminator}`,
+				uid: m.author.id,
+				platform: args[1],
+				region: args[2],
+				tier: args[3],
+				timestamp: new Date().getTime()
+			}
 
-		data[args[0]][m.author.id] = listing;
-		save(['data']);
-		update();
-	}
-	if(m.content.startsWith('!remove') && m.channel.guild.id === '198139711678578688') { // Remove user listing
-		let mode = findUserMode(m.author.id);
-		if(mode) {
-			delete data[mode][m.author.id];
+			data[args[0]][m.author.id] = listing;
 			save(['data']);
 			update();
 		}
+		if(m.content.startsWith('!remove') && m.channel.guild.id === '198139711678578688') { // Remove user listing
+			let mode = findUserMode(m.author.id);
+			if(mode) {
+				delete data[mode][m.author.id];
+				save(['data']);
+				update();
+			}
+		}
+
+		if(m.author.id !== self.id) {
+			client.deleteMessage(m.channel.id,m.id);
+		}
 	}
+	
 });
 
 function PM(id,content) { // Send PM
@@ -240,26 +249,29 @@ function format(user,args) { // Format data into something we like
 		if(args[4]) {
 			args[3] = args[3] + args[4]; // In case of multi-word ranks (Grand Master)
 		}
-		if(args[3].toLowerCase().includes('bronze')) {
+		if(args[3].match(/bron/i)) {
 			args[3] = 'Bronze';
 		}
-		else if(args[3].toLowerCase().includes('silv')) {
+		else if(args[3].match(/silv/i)) {
 			args[3] = 'Silver';
 		}
-		else if(args[3].toLowerCase().includes('gold')) {
+		else if(args[3].match(/gold/i)) {
 			args[3] = 'Gold';
 		}
-		else if(args[3].toLowerCase().includes('plat')) {
+		else if(args[3].match(/plat/i)) {
 			args[3] = 'Platinum';
 		}
-		else if(args[3].toLowerCase().includes('dia')) {
+		else if(args[3].match(/dia/i)) {
 			args[3] = 'Diamond';
 		}
-		else if(args[3].toLowerCase().includes('g') && args[3].toLowerCase().includes('m')) {
+		else if(args[3].match(/g.{0,10}m/i)) {
 			args[3] = 'Grand Master';
 		}
-		else if(args[3].toLowerCase().includes('mas')) {
+		else if(args[3].match(/mas/i)) {
 			args[3] = 'Master';
+		}
+		else if(args[3].match(/(500|t.{0,3}5)/i)) {
+			args[3] = 'Top 500';
 		}
 		else {
 			let str = "Your listing was not created because you did not provide a valid rank.";

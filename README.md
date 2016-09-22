@@ -1,4 +1,4 @@
-# Overwatch LFG Bot v0.1.0
+# Overwatch LFG Bot v0.2.0
 
 A bot written in Node.js, using the [Eris](https://github.com/abalabahaha/eris) library.  
 Entries are auto-deleted after 30min, or whatever you set `delete_interval` to be in the [config](./src/config.json) file.

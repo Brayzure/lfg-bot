@@ -20,6 +20,10 @@ client.on('ready', () => {
 
 client.on('messageCreate', (m) => {
 	if(m.channel.id === config.lfg) { // Posted in lfg channel
+		if(m.author.id !== self.id) {
+			client.deleteMessage(m.channel.id,m.id);
+		}
+
 		if(m.content.startsWith('!lfg')) { // New entry to lfg listing
 			if(m.content.startsWith('!lfghelp') || m.content === '!lfg') { // lfghelp
 				let str = 'Hello! I am a bot developed by **Brayzure#9406**! I generate a list of Overwatch games that are currently being hosted';
@@ -30,6 +34,12 @@ client.on('messageCreate', (m) => {
 			}
 
 			let args = m.content.split(' ').slice(1);
+			if(args.length < 3) {
+				let str = "Your listing was not created because you did not supply enough arguments!";
+				str += "\nA valid listing looks something like this: `!lfg casual PC NA`";
+				PM(m.author.id,str);
+				return;
+			}
 			args = format(m.author,args); // Format user-submitted data
 			
 			/*
@@ -69,9 +79,6 @@ client.on('messageCreate', (m) => {
 			}
 		}
 
-		if(m.author.id !== self.id) {
-			client.deleteMessage(m.channel.id,m.id);
-		}
 	}
 	
 });
@@ -246,6 +253,12 @@ function format(user,args) { // Format data into something we like
 
 	// Rank format
 	if(args[0] === 'Competitive') {
+		if(!args[3]) {
+			let str = "Your listing was not created because you did not provide a rank.";
+			str += "\nA valid listing looks something like this: `!lfg competitive PC NA Platinum`";
+			PM(m.author.id,str);
+			return null;
+		}
 		if(args[4]) {
 			args[3] = args[3] + args[4]; // In case of multi-word ranks (Grand Master)
 		}

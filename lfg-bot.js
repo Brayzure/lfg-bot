@@ -13,6 +13,8 @@ client.connect();
 setInterval(clean,6e4);
 setInterval(update,3e5);
 
+client.on('error', console.log);
+
 client.on('ready', () => {
 	console.log('Ready to play!');
 	self = client.getSelf();
@@ -63,7 +65,15 @@ client.on('messageCreate', (m) => {
 				platform: args[1],
 				region: args[2],
 				tier: args[3],
-				timestamp: new Date().getTime()
+				timestamp: new Date().getTime(),
+				voice: null
+			}
+
+			if(m.member.voiceState.channelID) {
+				let cid = m.member.voiceState.channelID;
+				let gid = client.channelGuildMap[cid];
+				listing.voice = client.guilds.get(gid).channels.get(cid).name;
+				//console.log(voice);
 			}
 
 			data[args[0]][m.author.id] = listing;
@@ -81,6 +91,38 @@ client.on('messageCreate', (m) => {
 
 	}
 	
+});
+
+client.on('voiceChannelJoin', (member, newC) => {
+	setTimeout(function _wait() {
+		let mode = findUserMode(member.id);
+		if(!mode) {
+			return;
+		}
+		data[mode][member.id].voice = newC.name;
+		save(['data']);
+		update();
+	},500);
+});
+
+client.on('voiceChannelLeave', (member, oldC) => {
+	let mode = findUserMode(member.id);
+	if(!mode) {
+		return;
+	}
+	data[mode][member.id].voice = null;
+	save(['data']);
+	update();
+});
+
+client.on('voiceChannelSwitch', (member, newC, oldC) => {
+	let mode = findUserMode(member.id);
+	if(!mode) {
+		return;
+	}
+	data[mode][member.id].voice = newC.name;
+	save(['data']);
+	update();
 });
 
 function PM(id,content) { // Send PM
@@ -128,6 +170,7 @@ function clean() { // Cleans old entries from the data object
 		}
 	}
 	if(flag) {
+		update();
 		save(['data']);
 	}
 }
@@ -139,7 +182,7 @@ function update() {
 		if(data.Competitive.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Competitive[key]; // Store listing to something short
-			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}  **Tier:** ${l.tier}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}  **Tier:** ${l.tier}  **Channel:** ${(l.voice) ? l.voice : '*None*'}\n`;
 		}
 	}
 	if(!flag) {
@@ -152,7 +195,7 @@ function update() {
 		if(data.Casual.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Casual[key]; // Store listing to something short
-			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}  **Channel:** ${(l.voice) ? l.voice : '*None*'}\n`;
 		}
 	}
 	if(!flag) {
@@ -165,7 +208,7 @@ function update() {
 		if(data.Brawl.hasOwnProperty(key)) {
 			flag = 1; // Yes there are!
 			let l = data.Brawl[key]; // Store listing to something short
-			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}\n`;
+			str += `**Discord Username:** <@${l.uid}>  **Platform:** ${l.platform}  **Region:** ${l.region}  **Channel:** ${(l.voice) ? l.voice : '*None*'}\n`;
 		}
 	}
 	if(!flag) {
